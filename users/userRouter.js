@@ -6,12 +6,12 @@ const router = express.Router();
 const users = require('./userDb');
 const posts = require('../posts/postDb');
 
-router.post('/', (req, res) => {
+router.post('/', validateUser, (req, res) => {
     console.log("Data recieved from Body", req.body);
     const user = req.body;
 
     // No name in Body? That returns an error
-    !user.name ? res.status(400).json({errorMessage: "Please provide a name for the user."}) :
+
 
      users.insert(user)
         .then( user => {
@@ -22,10 +22,9 @@ router.post('/', (req, res) => {
         })
 });
 
-router.post('/:id/posts', (req, res) => {
+router.post('/:id/posts', validateUserId, validatePost, (req, res) => {
     const id = req.params.id
     const post = req.body
-    !post.text ||!post.user_id ? res.status(400).json({errorMessage: "Please provide a text and a user id for the user."}) :
 
     posts.insert(post)
         .then( post => {
@@ -119,15 +118,30 @@ router.put('/:id', (req, res) => {
 //custom middleware
 
 function validateUserId(req, res, next) {
-
+    const id = req.body.user_id
+    users.getById(id)
+        .then( user => {
+            !user ? res.status(404).json({message: "user not found!"}) :
+            req.user = user;
+            next();
+        })
+        .catch( err =>{
+            res.status(500).json({message: "Uh oh! Unable to validate User ID!"})
+        })
 };
 
 function validateUser(req, res, next) {
-
+    const user = req.body
+    !user ? res.status(400).json({errorMessage: "Please provide user data!"}) :
+    !user.name ? res.status(400).json({errorMessage: "Please provide a name for the user."}) :
+    next()
 };
 
 function validatePost(req, res, next) {
-
+    const post = req.body
+    !post ? res.status(400).json({errorMessage: "Please provide the post data!"}) :
+    !post.text ? res.status(400).json({errorMessage: "Please provide text for the post."}) :
+    next()
 };
 
 module.exports = router;
